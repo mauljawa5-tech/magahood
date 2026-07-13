@@ -3,10 +3,12 @@ export const APP_CONFIG = {
   name: 'MAGAHOOD',
   ticker: '$MAGAHOOD',
   network: 'Robinhood Chain',
+  chainId: 4663,
   totalSupply: '1,000,000,000',
   /** Placeholder contract — replace after deploy */
   contractAddress: '0xMAGAHOOD0000000000000000000000000000DEMO',
-  demoMode: true,
+  /** App features use local demo $MAGAHOOD until token is deployed */
+  demoTokenMode: true,
   social: {
     twitter: 'https://x.com/magahood',
     telegram: 'https://t.me/magahood',

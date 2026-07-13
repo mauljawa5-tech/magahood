@@ -2,9 +2,21 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   APP_CONFIG,
   generateCitizenId,
-  generateDemoWallet,
   shortAddress,
 } from '../data/config'
+import {
+  TARGET_CHAIN,
+  connectEvmWallet,
+  tryReconnect,
+  subscribeWalletEvents,
+  switchOrAddChain,
+  getNativeBalance,
+  getChainId,
+  hasWallet,
+  detectWalletName,
+  openMetaMaskInstall,
+  explorerAddressUrl,
+} from '../lib/wallet'
 
 const STORAGE_KEY = 'magahood_citizen_v1'
 const AppContext = createContext(null)
@@ -22,8 +34,15 @@ function loadState() {
 export function AppProvider({ children }) {
   const saved = loadState()
 
-  const [wallet, setWallet] = useState(saved?.wallet ?? null)
+  // Real EVM wallet — do not restore fake addresses from storage
+  const [wallet, setWallet] = useState(null)
   const [connecting, setConnecting] = useState(false)
+  const [walletName, setWalletName] = useState(null)
+  const [chainId, setChainId] = useState(null)
+  const [networkOk, setNetworkOk] = useState(false)
+  const [ethBalance, setEthBalance] = useState(null)
+  const [walletReady, setWalletReady] = useState(false)
+
   const [citizen, setCitizen] = useState(saved?.citizen ?? null)
   const [joinedCities, setJoinedCities] = useState(saved?.joinedCities ?? [])
   const [balance, setBalance] = useState(saved?.balance ?? 0)
@@ -50,10 +69,9 @@ export function AppProvider({ children }) {
   const [modalPayload, setModalPayload] = useState(null)
   const [toasts, setToasts] = useState([])
 
-  // Persist
+  // Persist app state (not wallet address — wallet rehydrates via eth_accounts)
   useEffect(() => {
     const data = {
-      wallet,
       citizen,
       joinedCities,
       balance,
@@ -61,9 +79,28 @@ export function AppProvider({ children }) {
       votes,
       purchases,
       ownedListings,
+      lastWallet: wallet,
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   }, [wallet, citizen, joinedCities, balance, staked, votes, purchases, ownedListings])
+
+  const applySession = useCallback((session) => {
+    if (!session?.address) {
+      setWallet(null)
+      walletRef.current = null
+      setWalletName(null)
+      setChainId(null)
+      setNetworkOk(false)
+      setEthBalance(null)
+      return
+    }
+    setWallet(session.address)
+    walletRef.current = session.address
+    setWalletName(session.walletName || detectWalletName())
+    setChainId(session.chainId ?? null)
+    setNetworkOk(Boolean(session.networkOk))
+    setEthBalance(session.ethBalance ?? null)
+  }, [])
 
   const toast = useCallback((message, type = 'info') => {
     const id = `${Date.now()}-${Math.random()}`
@@ -87,25 +124,157 @@ export function AppProvider({ children }) {
     setModalPayload(null)
   }, [])
 
-  const connectWallet = useCallback(async () => {
-    setConnecting(true)
-    await new Promise((r) => setTimeout(r, 900))
-    const address = generateDemoWallet()
-    setWallet(address)
-    walletRef.current = address
-    if (balanceRef.current === 0) {
-      setBalance(1000) // demo starter $MAGAHOOD
-      balanceRef.current = 1000
+  // Auto-reconnect if previously authorized in browser wallet
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const session = await tryReconnect()
+        if (!cancelled && session) {
+          applySession(session)
+        }
+      } finally {
+        if (!cancelled) setWalletReady(true)
+      }
+    })()
+    return () => {
+      cancelled = true
     }
-    setConnecting(false)
-    toast(`Wallet connected: ${shortAddress(address)}`, 'success')
-    return address
+  }, [applySession])
+
+  // Listen for account / chain changes
+  useEffect(() => {
+    return subscribeWalletEvents({
+      onAccountsChanged: async (accounts) => {
+        if (!accounts?.length) {
+          applySession(null)
+          toast('Wallet disconnected', 'info')
+          return
+        }
+        const address = accounts[0]
+        let ethBal = null
+        let newChainId = null
+        try {
+          newChainId = await getChainId()
+          ethBal = await getNativeBalance(address)
+        } catch {
+          /* ignore */
+        }
+        applySession({
+          address,
+          chainId: newChainId,
+          networkOk: newChainId === TARGET_CHAIN.chainId,
+          walletName: detectWalletName(),
+          ethBalance: ethBal,
+        })
+        toast(`Account switched: ${shortAddress(address)}`, 'info')
+      },
+      onChainChanged: async (newChainId) => {
+        setChainId(newChainId)
+        const ok = newChainId === TARGET_CHAIN.chainId
+        setNetworkOk(ok)
+        if (walletRef.current) {
+          try {
+            const ethBal = await getNativeBalance(walletRef.current)
+            setEthBalance(ethBal)
+          } catch {
+            /* ignore */
+          }
+        }
+        if (ok) {
+          toast(`Connected to ${TARGET_CHAIN.chainName}`, 'success')
+        } else {
+          toast(`Wrong network (chain ${newChainId}). Switch to Robinhood Chain.`, 'error')
+        }
+      },
+    })
+  }, [applySession, toast])
+
+  const connectWallet = useCallback(async () => {
+    if (!hasWallet()) {
+      toast('Install MetaMask or another EVM wallet', 'error')
+      openMetaMaskInstall()
+      return null
+    }
+
+    setConnecting(true)
+    try {
+      const session = await connectEvmWallet({ switchNetwork: true })
+      applySession(session)
+
+      // Demo $MAGAHOOD app balance for ecosystem features (token not on-chain yet)
+      if (balanceRef.current === 0) {
+        balanceRef.current = 1000
+        setBalance(1000)
+      }
+
+      if (session.networkOk) {
+        toast(`${session.walletName} connected · ${TARGET_CHAIN.chainName}`, 'success')
+      } else {
+        toast(
+          `Connected ${shortAddress(session.address)} — please switch to ${TARGET_CHAIN.chainName}`,
+          'info',
+        )
+      }
+      return session.address
+    } catch (err) {
+      if (err?.code === 'NO_WALLET' || err?.code === 'NO_WALLET') {
+        toast('No wallet detected. Install MetaMask.', 'error')
+        openMetaMaskInstall()
+      } else if (err?.code === 4001) {
+        toast('Connection rejected in wallet', 'error')
+      } else {
+        console.error(err)
+        toast(err?.message || 'Failed to connect wallet', 'error')
+      }
+      return null
+    } finally {
+      setConnecting(false)
+    }
+  }, [applySession, toast])
+
+  const switchToRobinhood = useCallback(async () => {
+    try {
+      await switchOrAddChain(TARGET_CHAIN)
+      const id = TARGET_CHAIN.chainId
+      setChainId(id)
+      setNetworkOk(true)
+      if (walletRef.current) {
+        const ethBal = await getNativeBalance(walletRef.current)
+        setEthBalance(ethBal)
+      }
+      toast(`Switched to ${TARGET_CHAIN.chainName}`, 'success')
+      return true
+    } catch (err) {
+      if (err?.code === 4001) {
+        toast('Network switch rejected', 'error')
+      } else {
+        toast(err?.message || 'Failed to switch network', 'error')
+      }
+      return false
+    }
   }, [toast])
 
   const disconnectWallet = useCallback(() => {
     setWallet(null)
-    toast('Wallet disconnected', 'info')
+    walletRef.current = null
+    setWalletName(null)
+    setChainId(null)
+    setNetworkOk(false)
+    setEthBalance(null)
+    toast('Wallet disconnected from MAGAHOOD', 'info')
   }, [toast])
+
+  const refreshEthBalance = useCallback(async () => {
+    if (!walletRef.current) return null
+    try {
+      const ethBal = await getNativeBalance(walletRef.current)
+      setEthBalance(ethBal)
+      return ethBal
+    } catch {
+      return null
+    }
+  }, [])
 
   const requireWallet = useCallback(async () => {
     if (wallet) return wallet
@@ -312,15 +481,16 @@ export function AppProvider({ children }) {
 
   const resetDemo = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY)
-    setWallet(null)
     setCitizen(null)
     setJoinedCities([])
     setBalance(0)
+    balanceRef.current = 0
     setStaked(0)
+    stakedRef.current = 0
     setVotes({})
     setPurchases([])
     setOwnedListings([])
-    toast('Demo state reset', 'info')
+    toast('App demo data reset (wallet still connected)', 'info')
     closeModal()
   }, [toast, closeModal])
 
@@ -329,6 +499,13 @@ export function AppProvider({ children }) {
       config: APP_CONFIG,
       wallet,
       connecting,
+      walletName,
+      chainId,
+      networkOk,
+      ethBalance,
+      walletReady,
+      targetChain: TARGET_CHAIN,
+      hasInjectedWallet: hasWallet(),
       citizen,
       joinedCities,
       balance,
@@ -342,12 +519,15 @@ export function AppProvider({ children }) {
       isConnected: Boolean(wallet),
       isCitizen: Boolean(citizen),
       shortWallet: wallet ? shortAddress(wallet) : null,
+      explorerUrl: wallet ? explorerAddressUrl(wallet) : null,
       toast,
       dismissToast,
       openModal,
       closeModal,
       connectWallet,
       disconnectWallet,
+      switchToRobinhood,
+      refreshEthBalance,
       requireWallet,
       claimCitizenship,
       joinCity,
@@ -363,6 +543,11 @@ export function AppProvider({ children }) {
     [
       wallet,
       connecting,
+      walletName,
+      chainId,
+      networkOk,
+      ethBalance,
+      walletReady,
       citizen,
       joinedCities,
       balance,
@@ -379,6 +564,8 @@ export function AppProvider({ children }) {
       closeModal,
       connectWallet,
       disconnectWallet,
+      switchToRobinhood,
+      refreshEthBalance,
       requireWallet,
       claimCitizenship,
       joinCity,

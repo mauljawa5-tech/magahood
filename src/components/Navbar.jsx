@@ -24,6 +24,7 @@ export default function Navbar() {
     citizen,
     openModal,
     connecting,
+    networkOk,
   } = useApp()
 
   useEffect(() => {
@@ -86,7 +87,10 @@ export default function Navbar() {
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-void hover:bg-primary-glow glow-primary"
               >
                 <Wallet size={14} />
-                {shortWallet}
+                <span className={!networkOk ? 'opacity-80' : ''}>{shortWallet}</span>
+                {!networkOk && (
+                  <span className="text-[10px] font-bold text-void/80">!</span>
+                )}
                 <span className="text-[10px] opacity-80">{Math.floor(balance)} MH</span>
                 <ChevronDown size={14} />
               </button>

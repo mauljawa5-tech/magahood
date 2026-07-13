@@ -9,11 +9,15 @@ import {
   Unlock,
   ExternalLink,
   Building2,
+  AlertTriangle,
+  RefreshCw,
+  Network,
 } from 'lucide-react'
 import Modal from '../ui/Modal'
 import { useApp } from '../../context/AppContext'
 import { CITIES, APP_CONFIG } from '../../data/config'
 import { LogoMark } from '../Logo'
+import { hasWallet, detectWalletName, openMetaMaskInstall } from '../../lib/wallet'
 
 export default function ModalRoot() {
   const {
@@ -37,6 +41,14 @@ export default function ModalRoot() {
     ownedListings,
     resetDemo,
     toast,
+    walletName,
+    networkOk,
+    chainId,
+    ethBalance,
+    switchToRobinhood,
+    refreshEthBalance,
+    explorerUrl,
+    targetChain,
   } = useApp()
 
   return (
@@ -52,6 +64,14 @@ export default function ModalRoot() {
         staked={staked}
         citizen={citizen}
         resetDemo={resetDemo}
+        walletName={walletName}
+        networkOk={networkOk}
+        chainId={chainId}
+        ethBalance={ethBalance}
+        switchToRobinhood={switchToRobinhood}
+        refreshEthBalance={refreshEthBalance}
+        explorerUrl={explorerUrl}
+        targetChain={targetChain}
       />
       <CitizenshipModal
         open={activeModal === 'citizenship'}
@@ -113,13 +133,35 @@ function WalletModal({
   staked,
   citizen,
   resetDemo,
+  walletName,
+  networkOk,
+  chainId,
+  ethBalance,
+  switchToRobinhood,
+  refreshEthBalance,
+  explorerUrl,
+  targetChain,
 }) {
+  const injected = hasWallet()
+  const detected = detectWalletName()
+
   const handleConnect = async () => {
-    await connectWallet()
+    const addr = await connectWallet()
+    if (addr) {
+      // keep modal open so user sees status
+    }
+  }
+
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(wallet)
+    } catch {
+      /* ignore */
+    }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Wallet">
+    <Modal open={open} onClose={onClose} title="Connect Wallet">
       {!wallet ? (
         <div className="space-y-5">
           <div className="flex justify-center">
@@ -127,43 +169,137 @@ function WalletModal({
               <Wallet className="text-primary" size={32} />
             </div>
           </div>
-          <p className="text-sm text-muted text-center leading-relaxed">
-            Connect a demo wallet on {APP_CONFIG.network} to use citizenship, marketplace,
-            staking, and governance. No real funds are used.
-          </p>
-          <button
-            type="button"
-            disabled={connecting}
-            onClick={handleConnect}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-primary py-3 text-sm font-bold text-void hover:bg-primary-glow disabled:opacity-60"
-          >
-            {connecting ? (
-              <>
-                <Loader2 size={16} className="animate-spin" /> Connecting…
-              </>
-            ) : (
-              <>
-                <Wallet size={16} /> Connect Demo Wallet
-              </>
-            )}
-          </button>
+          <div className="text-center space-y-2">
+            <p className="text-sm text-white font-semibold">
+              Connect to {targetChain?.chainName || APP_CONFIG.network}
+            </p>
+            <p className="text-xs text-muted leading-relaxed">
+              Use MetaMask, Rabby, Phantom (EVM), or any injected wallet. We will request
+              connection and switch to Chain ID {targetChain?.chainId || 4663}.
+            </p>
+          </div>
+
+          {injected ? (
+            <button
+              type="button"
+              disabled={connecting}
+              onClick={handleConnect}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-bold text-void hover:bg-primary-glow disabled:opacity-60"
+            >
+              {connecting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Waiting for wallet…
+                </>
+              ) : (
+                <>
+                  <Wallet size={16} /> Connect {detected || 'Wallet'}
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex gap-2 text-xs text-amber-200">
+                <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                No browser wallet detected. Install MetaMask, then refresh this page.
+              </div>
+              <button
+                type="button"
+                onClick={openMetaMaskInstall}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-bold text-void"
+              >
+                <ExternalLink size={16} /> Install MetaMask
+              </button>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-border bg-surface p-3 text-[11px] text-muted space-y-1">
+            <p>
+              <span className="text-primary">Network:</span> {targetChain?.chainName}
+            </p>
+            <p>
+              <span className="text-primary">Chain ID:</span> {targetChain?.chainId}
+            </p>
+            <p>
+              <span className="text-primary">RPC:</span> rpc.mainnet.chain.robinhood.com
+            </p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
+          {!networkOk && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+              <div className="flex gap-2 text-xs text-amber-100">
+                <AlertTriangle size={16} className="shrink-0" />
+                <span>
+                  Wrong network (chain {chainId ?? '—'}). Switch to{' '}
+                  {targetChain?.chainName} (ID {targetChain?.chainId}).
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={switchToRobinhood}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-primary py-2 text-xs font-bold text-void"
+              >
+                <Network size={14} /> Switch to Robinhood Chain
+              </button>
+            </div>
+          )}
+
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-            <p className="text-[10px] uppercase tracking-wider text-primary mb-1">Address</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] uppercase tracking-wider text-primary">
+                {walletName || 'Wallet'} · {networkOk ? targetChain?.chainName : `Chain ${chainId}`}
+              </p>
+              {networkOk && (
+                <span className="text-[10px] font-bold text-primary">● Connected</span>
+              )}
+            </div>
             <p className="font-mono text-sm text-white break-all">{wallet}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={copyAddress}
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted hover:text-primary"
+              >
+                <Copy size={12} /> Copy
+              </button>
+              {explorerUrl && (
+                <a
+                  href={explorerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted hover:text-primary"
+                >
+                  <ExternalLink size={12} /> Explorer
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={refreshEthBalance}
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted hover:text-primary"
+              >
+                <RefreshCw size={12} /> Refresh
+              </button>
+            </div>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-border bg-surface p-3">
-              <p className="text-[10px] text-muted uppercase">Balance</p>
-              <p className="text-primary font-bold">{balance.toLocaleString()} MH</p>
+              <p className="text-[10px] text-muted uppercase">ETH (gas)</p>
+              <p className="text-white font-bold text-sm">
+                {ethBalance != null ? `${ethBalance}` : '—'}
+              </p>
             </div>
             <div className="rounded-xl border border-border bg-surface p-3">
-              <p className="text-[10px] text-muted uppercase">Staked</p>
-              <p className="text-primary font-bold">{staked.toLocaleString()} MH</p>
+              <p className="text-[10px] text-muted uppercase">$MAGAHOOD (app)</p>
+              <p className="text-primary font-bold text-sm">{balance.toLocaleString()} MH</p>
+            </div>
+            <div className="rounded-xl border border-border bg-surface p-3 col-span-2">
+              <p className="text-[10px] text-muted uppercase">Staked (app)</p>
+              <p className="text-primary font-bold text-sm">{staked.toLocaleString()} MH</p>
             </div>
           </div>
+
           {citizen && (
             <div className="rounded-xl border border-border bg-surface p-3 flex items-center gap-3">
               <LogoMark className="h-10 w-10" />
@@ -173,6 +309,7 @@ function WalletModal({
               </div>
             </div>
           )}
+
           <button
             type="button"
             onClick={() => {
@@ -188,7 +325,7 @@ function WalletModal({
             onClick={resetDemo}
             className="w-full text-xs text-muted hover:text-red-400"
           >
-            Reset demo data
+            Reset demo app data
           </button>
         </div>
       )}
