@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="MAGAHOOD">
+  <defs>
+    <linearGradient id="m-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8FF66"/>
+      <stop offset="50%" stop-color="#C6F700"/>
+      <stop offset="100%" stop-color="#9BC400"/>
+    </linearGradient>
+    <filter id="soft-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer hex nation border -->
+  <path
+    d="M64 8 L110 34 L110 94 L64 120 L18 94 L18 34 Z"
+    stroke="url(#m-glow)"
+    stroke-width="3"
+    fill="#0A0A0A"
+  />
+  <path
+    d="M64 18 L100 39 L100 89 L64 110 L28 89 L28 39 Z"
+    stroke="#C6F700"
+    stroke-width="1"
+    stroke-opacity="0.35"
+    fill="none"
+  />
+
+  <!-- Inner core panel -->
+  <path
+    d="M64 28 L90 44 L90 84 L64 100 L38 84 L38 44 Z"
+    fill="#111111"
+    stroke="#C6F700"
+    stroke-width="1.5"
+    stroke-opacity="0.5"
+  />
+
+  <!-- Stylized M / digital city gate -->
+  <g filter="url(#soft-glow)">
+    <path
+      d="M46 82 V48 L64 66 L82 48 V82"
+      stroke="url(#m-glow)"
+      stroke-width="7"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+  </g>
+
+  <!-- Center node (citizen / AI core) -->
+  <circle cx="64" cy="62" r="5" fill="#C6F700"/>
+  <circle cx="64" cy="62" r="9" stroke="#C6F700" stroke-width="1" stroke-opacity="0.4" fill="none"/>
+
+  <!-- Network nodes -->
+  <circle cx="46" cy="48" r="2.5" fill="#C6F700"/>
+  <circle cx="82" cy="48" r="2.5" fill="#C6F700"/>
+  <circle cx="46" cy="82" r="2.5" fill="#C6F700"/>
+  <circle cx="82" cy="82" r="2.5" fill="#C6F700"/>
+</svg>
