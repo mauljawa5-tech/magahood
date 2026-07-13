@@ -143,12 +143,20 @@ export default function AdditionalDetails() {
               <span className="text-primary font-semibold">Unique stack:</span>{' '}
               Passport → Land → Marketplace → Academy — all settled in $MAGAHOOD.
             </p>
-            <a
-              href="#token"
-              className="shrink-0 text-sm font-semibold text-primary hover:text-primary-glow transition-colors"
-            >
-              See token utility →
-            </a>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="#token"
+                className="shrink-0 text-sm font-semibold text-primary hover:text-primary-glow transition-colors"
+              >
+                See token utility →
+              </a>
+              <a
+                href="#marketplace"
+                className="shrink-0 text-sm font-semibold text-muted hover:text-primary transition-colors"
+              >
+                Open marketplace →
+              </a>
+            </div>
           </div>
         </FadeIn>
       </div>

@@ -9,6 +9,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { SectionLabel, SectionTitle, SectionLead, FadeIn } from './Section'
+import { useApp } from '../context/AppContext'
 
 const steps = [
   {
@@ -62,7 +63,19 @@ const steps = [
   },
 ]
 
+const stepActions = {
+  '01': { label: 'Create identity', modal: 'citizenship' },
+  '02': { label: 'Browse cities', href: '#cities' },
+  '03': { label: 'View passport', modal: 'citizenship' },
+  '04': { label: 'Open AI network', href: '#ai' },
+  '05': { label: 'Open marketplace', href: '#marketplace' },
+  '06': { label: 'Get tokens', modal: 'token' },
+  '07': { label: 'Go to governance', href: '#governance' },
+}
+
 export default function HowItWorks() {
+  const { openModal } = useApp()
+
   return (
     <section id="how-it-works" className="relative py-24 lg:py-32 border-t border-border">
       <div className="absolute inset-0 grid-bg opacity-25" />
@@ -117,6 +130,24 @@ export default function HowItWorks() {
                   <div className="max-w-2xl">
                     <h3 className="font-display text-lg font-bold text-white mb-2">{s.title}</h3>
                     <p className="text-sm text-muted leading-relaxed">{s.desc}</p>
+                    {stepActions[s.step] && (
+                      stepActions[s.step].modal ? (
+                        <button
+                          type="button"
+                          onClick={() => openModal(stepActions[s.step].modal)}
+                          className="mt-3 text-xs font-semibold text-primary hover:underline"
+                        >
+                          {stepActions[s.step].label} →
+                        </button>
+                      ) : (
+                        <a
+                          href={stepActions[s.step].href}
+                          className="mt-3 inline-block text-xs font-semibold text-primary hover:underline"
+                        >
+                          {stepActions[s.step].label} →
+                        </a>
+                      )
+                    )}
                   </div>
                   <div className="shrink-0 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 sm:max-w-[220px]">
                     <p className="text-[10px] uppercase tracking-wider text-primary mb-1">Includes</p>

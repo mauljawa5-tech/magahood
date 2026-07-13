@@ -1,6 +1,7 @@
 import { Award, BadgeCheck, IdCard, Star } from 'lucide-react'
 import { SectionLabel, SectionTitle, SectionLead, FadeIn } from './Section'
 import { LogoMark } from './Logo'
+import { useApp } from '../context/AppContext'
 
 const features = [
   { icon: IdCard, title: 'Blockchain Profile', desc: 'Unique Web3 identity anchored on-chain' },
@@ -10,6 +11,11 @@ const features = [
 ]
 
 export default function Identity() {
+  const { citizen, openModal, joinedCities } = useApp()
+  const rep = citizen?.reputation ?? 0
+  const contrib = Math.min(100, rep * 2)
+  const rank = Math.min(100, rep * 3 + (joinedCities.length * 10))
+
   return (
     <section id="identity" className="relative py-24 lg:py-32 border-t border-border">
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
@@ -24,6 +30,14 @@ export default function Identity() {
               Every user creates a unique Web3 identity inside MAGAHOOD. Build reputation through
               contributions, community activity, creative work, and ecosystem participation.
             </SectionLead>
+
+            <button
+              type="button"
+              onClick={() => openModal('citizenship')}
+              className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-void hover:bg-primary-glow"
+            >
+              {citizen ? 'View My Passport' : 'Create Digital Identity'}
+            </button>
 
             <div className="mt-10 grid sm:grid-cols-2 gap-4">
               {features.map((f) => (
@@ -49,16 +63,20 @@ export default function Identity() {
                     <p className="text-xs tracking-widest text-primary uppercase mb-1">
                       MAGAHOOD Passport
                     </p>
-                    <p className="font-display text-xl font-bold">Digital Citizen #08421</p>
+                    <p className="font-display text-xl font-bold">
+                      {citizen
+                        ? `${citizen.displayName} #${citizen.id}`
+                        : 'Digital Citizen #·····'}
+                    </p>
                   </div>
                   <LogoMark className="h-12 w-12" />
                 </div>
 
                 <div className="space-y-4 mb-8">
                   {[
-                    { label: 'Reputation', value: 87, max: 100 },
-                    { label: 'Contributions', value: 64, max: 100 },
-                    { label: 'Community Rank', value: 92, max: 100 },
+                    { label: 'Reputation', value: citizen ? rep : 12 },
+                    { label: 'Contributions', value: citizen ? contrib : 8 },
+                    { label: 'Community Rank', value: citizen ? rank : 5 },
                   ].map((stat) => (
                     <div key={stat.label}>
                       <div className="flex justify-between text-xs mb-1.5">
@@ -67,8 +85,8 @@ export default function Identity() {
                       </div>
                       <div className="h-1.5 rounded-full bg-border overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-primary"
-                          style={{ width: `${stat.value}%` }}
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${Math.min(100, stat.value)}%` }}
                         />
                       </div>
                     </div>
@@ -76,7 +94,15 @@ export default function Identity() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {['Builder', 'Creator', 'Early Citizen', 'Governor'].map((badge) => (
+                  {(citizen
+                    ? [
+                        'Citizen',
+                        ...(joinedCities.length ? ['City Member'] : []),
+                        ...(rep >= 20 ? ['Active'] : ['Newcomer']),
+                        ...(rep >= 50 ? ['Governor'] : []),
+                      ]
+                    : ['Unclaimed']
+                  ).map((badge) => (
                     <span
                       key={badge}
                       className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary"

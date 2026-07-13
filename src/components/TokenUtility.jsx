@@ -11,8 +11,10 @@ import {
   Shield,
   Zap,
   CircleDollarSign,
+  Copy,
 } from 'lucide-react'
 import { SectionLabel, SectionTitle, SectionLead, FadeIn } from './Section'
+import { useApp } from '../context/AppContext'
 
 const utilities = [
   {
@@ -113,6 +115,8 @@ const tokenFacts = [
 ]
 
 export default function TokenUtility() {
+  const { openModal, copyContract, balance, staked, isConnected } = useApp()
+
   return (
     <section id="token" className="relative py-24 lg:py-32 border-t border-border">
       <div className="absolute inset-0 radial-glow opacity-50" />
@@ -127,6 +131,36 @@ export default function TokenUtility() {
             Payments, governance, digital land, NFT assets, marketplace trades, community rewards,
             and AI services — one economic currency for the entire civilization layer.
           </SectionLead>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => openModal('token')}
+              className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-void hover:bg-primary-glow"
+            >
+              Get $MAGAHOOD
+            </button>
+            <button
+              type="button"
+              onClick={() => openModal('stake')}
+              className="rounded-full border border-primary/40 px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10"
+            >
+              Stake for Rewards
+            </button>
+            <button
+              type="button"
+              onClick={copyContract}
+              className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-muted hover:text-primary hover:border-primary/30"
+            >
+              <Copy size={14} /> Copy Contract
+            </button>
+            {isConnected && (
+              <span className="inline-flex items-center rounded-full border border-border px-4 py-2 text-xs text-muted">
+                Bal <span className="text-primary font-bold ml-1">{balance.toLocaleString()}</span>
+                <span className="mx-2 text-border">|</span>
+                Staked <span className="text-primary font-bold ml-1">{staked.toLocaleString()}</span>
+              </span>
+            )}
+          </div>
         </FadeIn>
 
         {/* Token facts strip */}

@@ -1,3 +1,4 @@
+import { AppProvider } from './context/AppContext'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import Intro from './components/Intro'
@@ -13,27 +14,33 @@ import Governance from './components/Governance'
 import Community from './components/Community'
 import Vision from './components/Vision'
 import Footer from './components/Footer'
+import ToastHost from './components/ui/Toast'
+import ModalRoot from './components/modals/ModalRoot'
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-void text-white">
-      <Navbar />
-      <main>
-        <Hero />
-        <Intro />
-        <HowItWorks />
-        <Identity />
-        <Cities />
-        <AICitizens />
-        <TokenUtility />
-        <AdditionalDetails />
-        <Marketplace />
-        <Roadmap />
-        <Governance />
-        <Community />
-        <Vision />
-      </main>
-      <Footer />
-    </div>
+    <AppProvider>
+      <div className="min-h-screen bg-void text-white">
+        <Navbar />
+        <main>
+          <Hero />
+          <Intro />
+          <HowItWorks />
+          <Identity />
+          <Cities />
+          <AICitizens />
+          <TokenUtility />
+          <AdditionalDetails />
+          <Marketplace />
+          <Roadmap />
+          <Governance />
+          <Community />
+          <Vision />
+        </main>
+        <Footer />
+        <ModalRoot />
+        <ToastHost />
+      </div>
+    </AppProvider>
   )
 }

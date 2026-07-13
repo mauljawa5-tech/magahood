@@ -1,5 +1,7 @@
 import { ArrowRight, MessageCircle, Send } from 'lucide-react'
 import { SectionLabel, SectionTitle, SectionLead, FadeIn } from './Section'
+import { useApp } from '../context/AppContext'
+import { APP_CONFIG } from '../data/config'
 
 function XIcon({ size = 20 }) {
   return (
@@ -10,6 +12,14 @@ function XIcon({ size = 20 }) {
 }
 
 export default function Community() {
+  const { openModal, citizen, toast } = useApp()
+
+  const socials = [
+    { icon: XIcon, label: 'X / Twitter', href: APP_CONFIG.social.twitter },
+    { icon: Send, label: 'Telegram', href: APP_CONFIG.social.telegram },
+    { icon: MessageCircle, label: 'Discord', href: APP_CONFIG.social.discord },
+  ]
+
   return (
     <section id="community" className="relative py-24 lg:py-32 border-t border-border">
       <div className="absolute inset-0 bg-primary/[0.03]" />
@@ -30,30 +40,38 @@ export default function Community() {
               </SectionLead>
 
               <div className="mt-10 flex flex-wrap justify-center gap-4">
-                <a
-                  href="#hero"
+                <button
+                  type="button"
+                  onClick={() => openModal('citizenship')}
                   className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-sm font-bold text-void hover:bg-primary-glow transition-colors"
                 >
-                  Claim Citizenship
+                  {citizen ? 'View Passport' : 'Claim Citizenship'}
                   <ArrowRight size={18} />
-                </a>
-                <a
-                  href="#token"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openModal('token')}
                   className="inline-flex items-center gap-2 rounded-full border border-primary/40 px-8 py-3.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
                 >
                   Get $MAGAHOOD
-                </a>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openModal('stake')}
+                  className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-sm font-semibold text-muted hover:text-primary hover:border-primary/30 transition-colors"
+                >
+                  Stake & Earn
+                </button>
               </div>
 
               <div className="mt-12 flex justify-center gap-4">
-                {[
-                  { icon: XIcon, label: 'X / Twitter' },
-                  { icon: Send, label: 'Telegram' },
-                  { icon: MessageCircle, label: 'Discord' },
-                ].map(({ icon: Icon, label }) => (
+                {socials.map(({ icon: Icon, label, href }) => (
                   <a
                     key={label}
-                    href="#"
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => toast(`Opening ${label}…`, 'info')}
                     className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface text-muted hover:text-primary hover:border-primary/40 transition-colors"
                     aria-label={label}
                   >
